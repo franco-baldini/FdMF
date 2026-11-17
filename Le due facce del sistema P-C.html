@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le due facce del sistema P-C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Pannello dei comandi a sinistra, scena a destra; lo sfondo della scena è il mondo esterno della Figura 30. */
+  --bg: #f3f4f7;
+  --panel: #fcfcfd;
+  --ink: #1b1e24;
+  --muted: #5a616e;
+  --line: #d8dbe2;
+  --accent: #1565c0;
+  --world: #ecedf2;
+  --font-display: "Source Serif 4", Georgia, "DejaVu Serif", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  /* colori della Figura 30 */
+  --c-es: #d1c4e9;  --c-inc: #a5d6a7;  --c-pre: #c8e6c9;
+  --c-pc: #1565c0;  --c-si: #c62828;   --c-ip: #757575;  --c-serie: #37474f;
+  --t-es: #4527a0;  --t-inc: #1b5e20;  --t-pre: #2e7d32;  --t-pc: #1565c0;  --t-world: #455a64;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101217; --panel: #161920; --ink: #e6e8ee; --muted: #a0a7b4; --line: #2a2f3a;
+    --accent: #6aa9f2; --world: #1d2029;
+    --c-es: #b9a6e0; --c-inc: #86c58a; --c-pre: #b2d8b4;
+    --c-pc: #5c9ded; --c-si: #ef5350; --c-ip: #a0a0a0; --c-serie: #cfd8dc;
+    --t-es: #c9b8f2; --t-inc: #9fd8a2; --t-pre: #bfe3c0; --t-pc: #8cbcf5; --t-world: #a9b6bf;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101217; --panel: #161920; --ink: #e6e8ee; --muted: #a0a7b4; --line: #2a2f3a;
+  --accent: #6aa9f2; --world: #1d2029;
+  --c-es: #b9a6e0; --c-inc: #86c58a; --c-pre: #b2d8b4;
+  --c-pc: #5c9ded; --c-si: #ef5350; --c-ip: #a0a0a0; --c-serie: #cfd8dc;
+  --t-es: #c9b8f2; --t-inc: #9fd8a2; --t-pre: #bfe3c0; --t-pc: #8cbcf5; --t-world: #a9b6bf;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.app { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; height: 100%; }
+.panel {
+  background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto;
+  padding: 22px 20px 26px; display: flex; flex-direction: column; gap: 18px;
+}
+.stage { position: relative; min-height: 0; background: var(--world); overflow: hidden; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#gizmo { position: absolute; left: 14px; bottom: 14px; width: 120px; height: 120px; pointer-events: none; }
+#labels { position: absolute; inset: 0; pointer-events: none; }
+.lbl {
+  position: absolute; left: 0; top: 0; white-space: nowrap; transform: translate(-50%, -50%);
+  font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 14px; line-height: 1;
+  text-shadow: 0 0 3px var(--world), 0 0 3px var(--world), 0 0 6px var(--world);
+}
+.lbl.pt { font-size: 15px; }
+.lbl.es { color: var(--t-es); } .lbl.inc { color: var(--t-inc); } .lbl.pre { color: var(--t-pre); }
+.lbl.pc { color: var(--t-pc); } .lbl.world { color: var(--t-world); font-weight: 400; }
+.stage-hint { position: absolute; right: 14px; bottom: 12px; margin: 0; font-size: 13px; color: var(--muted); }
+
+.kicker { margin: 0; font-size: 13px; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 25px; line-height: 1.15; margin: 4px 0 0; text-wrap: balance; }
+.caption { font-family: var(--font-display); font-size: 15.5px; line-height: 1.52; margin: 12px 0 0; max-width: 65ch; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.tabs button { border: 0; border-radius: 0; background: var(--panel); padding: 8px 10px; font-weight: 600; color: var(--muted); }
+.tabs button + button { border-left: 1px solid var(--line); }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--panel); }
+h2 { font-size: 12.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.group { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+.group[hidden], [hidden] { display: none !important; }
+.ctl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline; }
+.ctl label { font-size: 14px; }
+.ctl output { font-variant-numeric: tabular-nums; font-size: 13.5px; color: var(--muted); }
+.ctl input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; }
+input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
+input[type="range"]:disabled { opacity: 0.4; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.check { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { margin-top: 3px; }
+button, select {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer;
+}
+button:hover, select:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); min-width: 80px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.legend { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.legend li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: center; }
+.sw { width: 26px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.12); }
+.sw.line { height: 0; border: 0; border-top: 4px solid; border-radius: 0; }
+.sw.dash { height: 0; border: 0; border-top: 4px dashed; border-radius: 0; }
+.sw.dot { height: 0; border: 0; border-top: 2px dotted; border-radius: 0; }
+.m { text-transform: none; letter-spacing: 0; font-style: italic; }
+.note { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+.live { font-family: var(--font-display); font-size: 14.5px; margin: 0; min-height: 3em; }
+#ruler { width: 100%; height: 50px; display: block; overflow: visible; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto auto; height: auto; }
+  .stage { order: -1; height: min(68vh, 560px); }
+  .panel { border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .stage-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <header>
+      <p class="kicker">Fondamenti di Metapsicologia Formale · §10.7.4, Figura 30</p>
+      <h1>Le due facce del sistema P-C</h1>
+      <p class="caption" id="caption"></p>
+    </header>
+
+    <div class="tabs" role="tablist" aria-label="Vista">
+      <button type="button" role="tab" id="tab-chiusura" aria-selected="true" aria-controls="ctl-chiusura">La chiusura</button>
+      <button type="button" role="tab" id="tab-sezioni" aria-selected="false" aria-controls="ctl-sezioni">Le sezioni in R⁴</button>
+    </div>
+
+    <!-- vista 1: la chiusura -->
+    <div id="ctl-chiusura" role="tabpanel" aria-labelledby="tab-chiusura" style="display:flex;flex-direction:column;gap:18px">
+      <section class="group" aria-labelledby="h-close">
+        <h2 id="h-close">Identificazione delle due facce</h2>
+        <div class="ctl">
+          <label for="t">Chiusura del guscio</label><output id="t-out" for="t">78%</output>
+          <input type="range" id="t" min="0" max="1" step="0.005" value="0.78">
+        </div>
+        <div class="row">
+          <button type="button" class="primary" id="play1" aria-pressed="false">Avvia</button>
+          <label class="check" for="anim1" style="align-items:center">anima
+            <select id="anim1">
+              <option value="t">la chiusura</option>
+              <option value="rzw">la rotazione z–w</option>
+              <option value="rxw">la rotazione x–w</option>
+              <option value="ryw">la rotazione y–w</option>
+            </select>
+          </label>
+        </div>
+      </section>
+      <section class="group" aria-labelledby="h-rot">
+        <h2 id="h-rot">Rotazione nei piani con <span class="m">w</span></h2>
+        <div class="ctl">
+          <label for="rzw">Piano z–w</label><output id="rzw-out" for="rzw">58°</output>
+          <input type="range" id="rzw" min="-180" max="180" step="1" value="58">
+        </div>
+        <div class="ctl">
+          <label for="rxw">Piano x–w</label><output id="rxw-out" for="rxw">0°</output>
+          <input type="range" id="rxw" min="-180" max="180" step="1" value="0">
+        </div>
+        <div class="ctl">
+          <label for="ryw">Piano y–w</label><output id="ryw-out" for="ryw">0°</output>
+          <input type="range" id="ryw" min="-180" max="180" step="1" value="0">
+        </div>
+        <div class="ctl">
+          <label for="d">Distanza del punto di vista lungo w</label><output id="d-out" for="d">3,5</output>
+          <input type="range" id="d" min="1.6" max="12" step="0.1" value="3.5">
+        </div>
+        <label class="check" for="ortho"><input type="checkbox" id="ortho"> Proiezione ortogonale (punto di vista all'infinito)</label>
+        <label class="check" for="shadeW"><input type="checkbox" id="shadeW"> Schiarisci verso +w, scurisci verso −w</label>
+      </section>
+      <section class="group" aria-labelledby="h-show1">
+        <h2 id="h-show1">Mostra</h2>
+        <label class="check" for="guscio"><input type="checkbox" id="guscio"> Le sfere del guscio intero, oltre la sezione</label>
+        <label class="check" for="serie"><input type="checkbox" id="serie" checked> La serie dei sistemi per i punti a, b, c</label>
+        <label class="check" for="labels1"><input type="checkbox" id="labels1" checked> Le etichette</label>
+      </section>
+    </div>
+
+    <!-- vista 2: le sezioni -->
+    <div id="ctl-sezioni" role="tabpanel" aria-labelledby="tab-sezioni" hidden style="display:flex;flex-direction:column;gap:18px">
+      <section class="group" aria-labelledby="h-sez">
+        <h2 id="h-sez">Iperpiano di sezione <span class="m">x₄ = h</span></h2>
+        <div class="ctl">
+          <label for="h">Posizione h lungo la quarta coordinata</label><output id="h-out" for="h">0,00</output>
+          <input type="range" id="h" min="-1.02" max="1.02" step="0.005" value="0">
+        </div>
+        <svg id="ruler" viewBox="0 0 340 50" role="img" aria-label="Profilo radiale dell'apparato in R⁴ e posizione dell'iperpiano"></svg>
+        <p class="live" id="live" aria-live="polite"></p>
+        <div class="row">
+          <button type="button" class="primary" id="play2" aria-pressed="false">Avvia</button>
+          <span class="note">fa scorrere l'iperpiano da un capo all'altro</span>
+        </div>
+      </section>
+      <section class="group" aria-labelledby="h-show2">
+        <h2 id="h-show2">Mostra</h2>
+        <div class="ctl">
+          <label for="wedge">Ampiezza del taglio</label><output id="wedge-out" for="wedge">110°</output>
+          <input type="range" id="wedge" min="30" max="200" step="1" value="110">
+        </div>
+        <label class="check" for="labels2"><input type="checkbox" id="labels2" checked> Le etichette</label>
+      </section>
+    </div>
+
+    <section class="group" aria-labelledby="h-leg">
+      <h2 id="h-leg">Legenda</h2>
+      <ul class="legend">
+        <li><span class="sw" style="background:var(--c-pre)"></span><span>Io preconscio</span></li>
+        <li><span class="sw" style="background:var(--c-inc)"></span><span>Io inconscio</span></li>
+        <li><span class="sw" style="background:var(--c-es)"></span><span>Es (R₀)</span></li>
+        <li><span class="sw line" style="border-color:var(--c-pc)"></span><span>Sistema percezione-coscienza: faccia attiva (coscienza) e faccia ricettiva (percezione)</span></li>
+        <li><span class="sw dash" style="border-color:var(--c-si)"></span><span>Super-io, bordo interno dell'Io</span></li>
+        <li><span class="sw dot" style="border-color:var(--c-ip)"></span><span>Confine fra Io inconscio e Io preconscio</span></li>
+        <li id="leg-serie"><span class="sw line" style="border-color:var(--c-serie);border-top-width:2px"></span><span>La serie dei sistemi per un punto della membrana</span></li>
+        <li><span class="sw" style="background:var(--world)"></span><span>Mondo esterno, cioè lo sfondo</span></li>
+      </ul>
+    </section>
+
+    <section class="group">
+      <p class="note" id="note"></p>
+      <div class="row"><button type="button" id="reset">Ripristina la vista</button></div>
+    </section>
+  </aside>
+
+  <main class="stage" aria-label="Scena tridimensionale">
+    <canvas id="scene"></canvas>
+    <div id="labels"></div>
+    <canvas id="gizmo" aria-hidden="true"></canvas>
+    <p class="stage-hint">Trascina per ruotare in R³ · rotella per avvicinare</p>
+  </main>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180;
+const num = (v, k = 2) => v.toFixed(k).replace('.', ',').replace(/^-/, '−');
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/* ------------------------------------------------------------------
+   La geometria della Figura 30 (§10.7.4)
+   Raggi misurati sulla figura, in unità della faccia attiva.
+   ------------------------------------------------------------------ */
+const SCALE = 1.35;
+const R = { in: 0.169 * SCALE, si: 0.362 * SCALE, ip: 0.681 * SCALE, out: SCALE };
+const L0 = R.out - R.in;
+const S_SI = (R.si - R.in) / L0, S_IP = (R.ip - R.in) / L0;   // posizioni sulla serie, da 0 (faccia ricettiva) a 1 (faccia attiva)
+const RHO_MID = (R.in + R.out) / 2;
+const A_FIN = 0.40, L1 = 2 * Math.PI * A_FIN;
+const POINTS = [['a', 150], ['b', 210], ['c', 330]];             // come nella Figura 30
+
+// Chiusura: il raggio [faccia ricettiva, faccia attiva] si curva verso w
+// fino a diventare un cerchio; t = 0 è la Figura 30, t = 1 il guscio chiuso.
+function closeRW(s, t, o) {
+  const L = (1 - t) * L0 + t * L1, alpha = 2 * Math.PI * t, x = s - 0.5;
+  if (alpha < 1e-5) { o[0] = RHO_MID + L * x; o[1] = 0; return o; }
+  const a = L / alpha, phi = alpha * x;
+  o[0] = RHO_MID + a * Math.sin(phi);
+  o[1] = a * (1 - Math.cos(phi));
+  return o;
+}
+
+/* ------------------------------------------------------------------
+   Stato
+   ------------------------------------------------------------------ */
+const DEF = {
+  chiusura: { t: 0.78, rzw: 58, rxw: 0, ryw: 0, d: 3.5, ortho: false, shadeW: false, guscio: false, serie: true, labels: true, anim: 't' },
+  sezioni: { h: 0, wedge: 110, labels: true },
+};
+const CAM = {
+  chiusura: { pos: [3.3, 3.0, 3.9], target: [0, 0.32, 0] },
+  sezioni: { pos: [3.35, 3.9, 4.05], target: [0, -0.05, 0] },
+};
+const st = { view: 'chiusura', playing: false, dir: 1, chiusura: { ...DEF.chiusura }, sezioni: { ...DEF.sezioni } };
+
+/* ------------------------------------------------------------------
+   Scena
+   ------------------------------------------------------------------ */
+const canvas = $('scene'), stage = canvas.parentElement;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 200);
+scene.add(camera);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x5a5a5a, 1.35));
+const head = new THREE.DirectionalLight(0xffffff, 1.45);
+head.position.set(1.2, 2.2, 3);
+camera.add(head);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 1.5; controls.maxDistance = 25;
+const root = new THREE.Group();
+scene.add(root);
+
+/* ------------------------------------------------------------------
+   Proiezione: rotazione nei piani con w, poi R⁴ → R³
+   ------------------------------------------------------------------ */
+function projector() {
+  if (st.view === 'sezioni') return (x, y, z, w, o) => { o[0] = x; o[1] = z; o[2] = y; o[3] = 0; return o; };
+  const s = st.chiusura;
+  const ca = Math.cos(rad(s.rxw)), sa = Math.sin(rad(s.rxw));
+  const cb = Math.cos(rad(s.ryw)), sb = Math.sin(rad(s.ryw));
+  const cc = Math.cos(rad(s.rzw)), sc = Math.sin(rad(s.rzw));
+  const d = s.d, ortho = s.ortho;
+  return (x, y, z, w, o) => {
+    let q;
+    q = ca * x + sa * w; w = -sa * x + ca * w; x = q;
+    q = cb * y + sb * w; w = -sb * y + cb * w; y = q;
+    q = cc * z + sc * w; w = -sc * z + cc * w; z = q;
+    const k = ortho ? 1 : d / Math.max(d - w, 0.05);
+    o[0] = x * k; o[1] = z * k; o[2] = y * k; o[3] = w;   // in R³ la z sta in alto
+    return o;
+  };
+}
+
+/* ------------------------------------------------------------------
+   Pezzi della scena: superfici, tubi, punti, etichette
+   ------------------------------------------------------------------ */
+const T4 = new Float64Array(4), O4 = new Float64Array(4);
+let pieces = [], labels = [], camAz = 0;
+
+function material(colorVar, opacity) {
+  const m = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.62, metalness: 0, vertexColors: false });
+  m.userData.colorVar = colorVar; m.userData.opacity = opacity;
+  applyMaterialColor(m);
+  return m;
+}
+function applyMaterialColor(m) {
+  m.color = new THREE.Color(css(m.userData.colorVar));
+  const op = m.userData.opacity;
+  m.transparent = op < 1; m.opacity = op; m.depthWrite = op >= 1;
+  m.needsUpdate = true;
+}
+
+// superficie parametrica f(u, v, o4), u e v in [0, 1]
+function surface({ nu, nv, closedU = false, color, opacity = 1, f, show = () => true, shade = false }) {
+  const cols = closedU ? nu : nu + 1, rows = nv + 1, n = cols * rows;
+  const idx = [];
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+    const i1 = closedU ? (i + 1) % cols : i + 1;
+    const a = j * cols + i, b = j * cols + i1, c = (j + 1) * cols + i, d = (j + 1) * cols + i1;
+    idx.push(a, b, d, a, d, c);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+  geo.setIndex(idx);
+  const mat = material(color, opacity);
+  const mesh = new THREE.Mesh(geo, mat);
+  if (opacity < 1) mesh.renderOrder = 2;
+  root.add(mesh);
+  const wv = new Float32Array(n);
+  return {
+    mesh, mat, shade,
+    update(P) {
+      mesh.visible = show();
+      if (!mesh.visible) return;
+      const pos = geo.attributes.position.array;
+      let k = 0;
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+        f(i / nu, j / nv, T4); P(T4[0], T4[1], T4[2], T4[3], O4);
+        pos[3 * k] = O4[0]; pos[3 * k + 1] = O4[1]; pos[3 * k + 2] = O4[2]; wv[k] = O4[3]; k++;
+      }
+      geo.attributes.position.needsUpdate = true;
+      geo.computeVertexNormals();
+      geo.computeBoundingSphere();
+      this.wv = wv;
+    },
+    shadeColors(wmax, on) {
+      if (!mesh.visible) return;
+      if (mat.vertexColors !== on) { mat.vertexColors = on; mat.needsUpdate = true; }
+      if (!on) return;
+      const col = geo.attributes.color.array;
+      for (let k = 0; k < wv.length; k++) {
+        const q = wv[k] / wmax; let g = 1;
+        if (q > 0) g = 1 + 0.6 * q; else g = 1 + 0.45 * q;
+        col[3 * k] = col[3 * k + 1] = col[3 * k + 2] = g;
+      }
+      geo.attributes.color.needsUpdate = true;
+    },
+  };
+}
+
+// tubo intorno a una curva g(u, o4); dash = [pieni, vuoti] in campioni
+function tube({ n, closed = false, color, radius, dash = null, g, show = () => true, radial = 8 }) {
+  const m = closed ? n : n + 1;
+  const segs = [];
+  if (dash) {
+    const [on, off] = dash, end = closed ? m : m - 1;
+    for (let i = 0; i < end; i += on + off) segs.push([i, closed ? i + on : Math.min(i + on, m - 1)]);
+  } else segs.push([0, closed ? m : m - 1]);
+  let nv = 0, ni = 0;
+  for (const [a, b] of segs) { const k = b - a + 1; nv += k * radial; ni += (k - 1) * radial * 6; }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), idx = new Uint32Array(ni);
+  let vi = 0, ii = 0;
+  for (const [a, b] of segs) {
+    const k = b - a + 1;
+    for (let r = 0; r < k - 1; r++) for (let q = 0; q < radial; q++) {
+      const q1 = (q + 1) % radial, v00 = vi + r * radial + q, v01 = vi + r * radial + q1;
+      const v10 = v00 + radial, v11 = v01 + radial;
+      idx[ii++] = v00; idx[ii++] = v10; idx[ii++] = v11; idx[ii++] = v00; idx[ii++] = v11; idx[ii++] = v01;
+    }
+    vi += k * radial;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  const mat = material(color, 1);
+  const mesh = new THREE.Mesh(geo, mat);
+  root.add(mesh);
+  const P3 = new Float32Array(m * 3);
+  const Tn = new THREE.Vector3(), N = new THREE.Vector3(), B = new THREE.Vector3(), tmp = new THREE.Vector3();
+  return {
+    mesh, mat,
+    update(P) {
+      mesh.visible = show();
+      if (!mesh.visible) return;
+      for (let i = 0; i < m; i++) {
+        g(closed ? i / n : i / n, T4); P(T4[0], T4[1], T4[2], T4[3], O4);
+        P3[3 * i] = O4[0]; P3[3 * i + 1] = O4[1]; P3[3 * i + 2] = O4[2];
+      }
+      let v = 0;
+      for (const [a, b] of segs) {
+        let hasN = false;
+        for (let j = a; j <= b; j++) {
+          const i = closed ? j % m : j;
+          const ip = closed ? (j + 1) % m : Math.min(j + 1, m - 1);
+          const im = closed ? (j - 1 + m) % m : Math.max(j - 1, 0);
+          Tn.set(P3[3 * ip] - P3[3 * im], P3[3 * ip + 1] - P3[3 * im + 1], P3[3 * ip + 2] - P3[3 * im + 2]);
+          if (Tn.lengthSq() < 1e-14) Tn.set(1, 0, 0); else Tn.normalize();
+          if (!hasN) {
+            tmp.set(Math.abs(Tn.x) < 0.9 ? 1 : 0, Math.abs(Tn.x) < 0.9 ? 0 : 1, 0);
+            N.copy(tmp).addScaledVector(Tn, -tmp.dot(Tn)).normalize(); hasN = true;
+          } else {
+            N.addScaledVector(Tn, -N.dot(Tn));
+            if (N.lengthSq() < 1e-12) { tmp.set(0, 0, 1); N.copy(tmp).addScaledVector(Tn, -tmp.dot(Tn)); }
+            N.normalize();
+          }
+          B.crossVectors(Tn, N);
+          for (let q = 0; q < radial; q++) {
+            const ang = 2 * Math.PI * q / radial, c = Math.cos(ang), s = Math.sin(ang);
+            const nx = c * N.x + s * B.x, ny = c * N.y + s * B.y, nz = c * N.z + s * B.z;
+            pos[3 * v] = P3[3 * i] + radius * nx; pos[3 * v + 1] = P3[3 * i + 1] + radius * ny; pos[3 * v + 2] = P3[3 * i + 2] + radius * nz;
+            nor[3 * v] = nx; nor[3 * v + 1] = ny; nor[3 * v + 2] = nz; v++;
+          }
+        }
+      }
+      geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true;
+      geo.computeBoundingSphere();
+    },
+  };
+}
+
+function dot({ color, r = 0.032, g, show = () => true }) {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), material(color, 1));
+  root.add(mesh);
+  return { mesh, mat: mesh.material, update(P) { mesh.visible = show(); g(T4); P(T4[0], T4[1], T4[2], T4[3], O4); mesh.position.set(O4[0], O4[1], O4[2]); } };
+}
+
+const labelBox = $('labels');
+function label({ text, cls, g, show = () => true, dx = 0, dy = 0, prio = 0 }) {
+  const el = document.createElement('span');
+  el.className = 'lbl ' + cls; el.textContent = typeof text === 'function' ? text() : text;
+  labelBox.appendChild(el);
+  const p = new THREE.Vector3();
+  return { el, p, show, dx, dy, text, prio, update(P) { g(T4); P(T4[0], T4[1], T4[2], T4[3], O4); p.set(O4[0], O4[1], O4[2]); } };
+}
+
+function clearScene() {
+  for (const pc of pieces) { root.remove(pc.mesh); pc.mesh.geometry.dispose(); pc.mesh.material.dispose(); }
+  pieces = []; labels = []; labelBox.textContent = '';
+}
+
+/* ------------------------------------------------------------------
+   Vista 1: la chiusura
+   ------------------------------------------------------------------ */
+function buildChiusura() {
+  const S = st.chiusura, rw = new Float64Array(2);
+  const sec = (th, s, o) => { closeRW(s, S.t, rw); o[0] = rw[0] * Math.cos(th); o[1] = rw[0] * Math.sin(th); o[2] = 0; o[3] = rw[1]; return o; };
+  const sph = (th, ps, s, o) => { closeRW(s, S.t, rw); const c = Math.cos(ps); o[0] = rw[0] * c * Math.cos(th); o[1] = rw[0] * c * Math.sin(th); o[2] = rw[0] * Math.sin(ps); o[3] = rw[1]; return o; };
+  const TAU = 2 * Math.PI;
+  const band = (s0, s1, color, nv) => surface({ nu: 144, nv, closedU: true, color, shade: true, f: (u, v, o) => sec(TAU * u, s0 + (s1 - s0) * v, o) });
+  pieces.push(band(0, S_SI, '--c-es', 8), band(S_SI, S_IP, '--c-inc', 14), band(S_IP, 1, '--c-pre', 14));
+  const ring = (s, color, radius, dash) => tube({ n: 288, closed: true, color, radius, dash, g: (u, o) => sec(TAU * u, s, o) });
+  pieces.push(ring(0, '--c-pc', 0.017), ring(1, '--c-pc', 0.017), ring(S_SI, '--c-si', 0.011, [5, 3]), ring(S_IP, '--c-ip', 0.006, [1, 2]));
+  const showSerie = () => S.serie, showGuscio = () => S.guscio, showLab = () => S.labels;
+  for (const [name, deg] of POINTS) {
+    const th = rad(deg);
+    pieces.push(tube({ n: 96, color: '--c-serie', radius: 0.0055, show: showSerie, g: (u, o) => sec(th, u, o) }));
+    pieces.push(dot({ color: '--c-pc', g: o => sec(th, 0, o) }), dot({ color: '--c-pc', g: o => sec(th, 1, o) }));
+    labels.push(label({ text: name, cls: 'pc pt', prio: 2, show: showLab, dx: -11, dy: -9, g: o => sec(th, 0, o) }));
+    labels.push(label({ text: name, cls: 'pc pt', prio: 2, show: showLab, dx: -11, dy: -9, g: o => sec(th, 1, o) }));
+  }
+  const shell = (s, color, opacity) => surface({ nu: 72, nv: 36, closedU: true, color, opacity, show: showGuscio,
+    f: (u, v, o) => sph(TAU * u, Math.PI * (v - 0.5), s, o) });
+  pieces.push(shell(0, '--c-pc', 0.20), shell(1, '--c-pc', 0.20), shell(S_SI, '--c-si', 0.13), shell(S_IP, '--c-ip', 0.08));
+  // le etichette dei sistemi seguono la camera: davanti, di lato, dietro
+  const at = k => camAz + k;
+  const closed = () => S.t > 0.985;
+  labels.push(label({ text: 'Io preconscio', cls: 'pre', prio: 3, show: showLab, g: o => sec(at(0.32), 0.84, o) }));
+  labels.push(label({ text: 'Io inconscio', cls: 'inc', prio: 3, show: showLab, g: o => sec(at(2.25), (S_SI + S_IP) / 2, o) }));
+  labels.push(label({ text: 'Es', cls: 'es', prio: 3, show: showLab, g: o => sec(at(Math.PI - 0.35), S_SI * 0.5, o) }));
+  labels.push(label({ text: () => closed() ? 'faccia attiva = faccia ricettiva' : 'faccia ricettiva', cls: 'pc', prio: 4, show: showLab, dy: -13, g: o => sec(at(Math.PI + 0.95), 0, o) }));
+  labels.push(label({ text: 'faccia attiva', cls: 'pc', prio: 4, show: () => showLab() && !closed(), dy: 15, g: o => sec(at(-1.15), 1, o) }));
+}
+
+/* ------------------------------------------------------------------
+   Vista 2: le sezioni del guscio di R⁴
+   ------------------------------------------------------------------ */
+function buildSezioni() {
+  const S = st.sezioni;
+  const q = r => Math.sqrt(Math.max(r * r - S.h * S.h, 0));
+  const PHI_C = rad(50);
+  const cut = () => [PHI_C - rad(S.wedge) / 2, PHI_C + rad(S.wedge) / 2];
+  // punto della sezione: azimut phi, raggio rr, latitudine ps; la quarta coordinata vale h
+  const pt = (phi, rr, ps, o) => { const c = Math.cos(ps); o[0] = rr * c * Math.cos(phi); o[1] = rr * c * Math.sin(phi); o[2] = rr * Math.sin(ps); o[3] = S.h; return o; };
+  const showLab = () => S.labels;
+  const HALF = Math.PI / 2;
+  const layers = [[R.in, R.si, '--c-es'], [R.si, R.ip, '--c-inc'], [R.ip, R.out, '--c-pre']];
+  // pareti del taglio: due quarti verticali e il settore orizzontale
+  for (const [ra, rb, color] of layers) {
+    const vis = () => q(rb) > 1e-4;
+    for (const side of [0, 1]) pieces.push(surface({ nu: 32, nv: 10, color, show: vis,
+      f: (u, v, o) => pt(cut()[side], q(ra) + (q(rb) - q(ra)) * v, HALF * u, o) }));
+    pieces.push(surface({ nu: 40, nv: 10, color, show: vis,
+      f: (u, v, o) => { const [p1, p2] = cut(); return pt(p1 + (p2 - p1) * u, q(ra) + (q(rb) - q(ra)) * v, 0, o); } }));
+  }
+  // sfere: emisfero inferiore intero, emisfero superiore senza il cuneo
+  const walls = [[R.in, '--c-pc', 0.26, null, 0.016], [R.si, '--c-si', 0.14, [4, 3], 0.010], [R.ip, '--c-ip', 0.08, [1, 2], 0.006], [R.out, '--c-pc', 0.22, null, 0.016]];
+  for (const [r, color, op, dash, tr] of walls) {
+    const vis = () => q(r) > 1e-4;
+    pieces.push(surface({ nu: 72, nv: 18, closedU: true, color, opacity: op, show: vis,
+      f: (u, v, o) => pt(2 * Math.PI * u, q(r), -HALF + HALF * v, o) }));
+    pieces.push(surface({ nu: 64, nv: 18, color, opacity: op, show: vis,
+      f: (u, v, o) => { const [p1, p2] = cut(); return pt(p2 + (2 * Math.PI - (p2 - p1)) * u, q(r), HALF * v, o); } }));
+    for (const side of [0, 1]) pieces.push(tube({ n: 48, color, radius: tr, dash, show: vis,
+      g: (u, o) => pt(cut()[side], q(r), HALF * u, o) }));
+    pieces.push(tube({ n: 64, color, radius: tr, dash, show: vis,
+      g: (u, o) => { const [p1, p2] = cut(); return pt(p1 + (p2 - p1) * u, q(r), 0, o); } }));
+  }
+  const mid = (ra, rb) => (q(ra) + q(rb)) / 2, az = () => (cut()[0] + cut()[1]) / 2;
+  labels.push(label({ text: 'Es', cls: 'es', show: () => showLab() && q(R.si) - q(R.in) > 0.05, g: o => pt(az(), mid(R.in, R.si), 0, o) }));
+  labels.push(label({ text: 'Io inconscio', cls: 'inc', show: () => showLab() && q(R.ip) - q(R.si) > 0.08, g: o => pt(az(), mid(R.si, R.ip), 0, o) }));
+  labels.push(label({ text: 'Io preconscio', cls: 'pre', show: () => showLab() && q(R.out) - q(R.ip) > 0.08, g: o => pt(az(), mid(R.ip, R.out), 0, o) }));
+  labels.push(label({ text: 'mondo esterno', cls: 'world', show: () => showLab() && q(R.in) > 0.12, g: o => pt(az(), q(R.in) * 0.45, 0, o) }));
+  labels.push(label({ text: 'faccia attiva', cls: 'pc', show: () => showLab() && q(R.out) > 0.1, dy: -12, g: o => pt(cut()[0] - 0.35, q(R.out), 0.55, o) }));
+  labels.push(label({ text: 'faccia ricettiva', cls: 'pc', show: () => showLab() && q(R.in) > 0.12, dy: -13, g: o => pt(0, q(R.in), Math.PI / 2, o) }));
+}
+
+/* ------------------------------------------------------------------
+   Aggiornamento
+   ------------------------------------------------------------------ */
+let dirty = true;
+function update() {
+  const P = projector();
+  for (const pc of pieces) pc.update(P);
+  for (const lb of labels) lb.update(P);
+  // schiaritura secondo w
+  const on = st.view === 'chiusura' && st.chiusura.shadeW;
+  let wmax = 1e-6;
+  if (on) for (const pc of pieces) if (pc.shade && pc.mesh.visible && pc.wv) for (const w of pc.wv) wmax = Math.max(wmax, Math.abs(w));
+  for (const pc of pieces) if (pc.shade) pc.shadeColors(wmax, on);
+  if (st.view === 'sezioni') updateLive();
+}
+
+const vtmp = new THREE.Vector3();
+function placeLabels() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  for (const lb of labels) {
+    const txt = typeof lb.text === 'function' ? lb.text() : lb.text;
+    if (lb.el.textContent !== txt) lb.el.textContent = txt;
+    lb.vis = lb.show();
+    if (!lb.vis) continue;
+    vtmp.copy(lb.p).project(camera);
+    lb.vis = vtmp.z < 1 && Math.abs(vtmp.x) < 1.2 && Math.abs(vtmp.y) < 1.2;
+    lb.x = (vtmp.x + 1) / 2 * W + lb.dx; lb.y = (1 - vtmp.y) / 2 * H + lb.dy;
+  }
+  // lettere uguali sovrapposte (le due facce identificate): se ne mostra una
+  for (let i = 0; i < labels.length; i++) for (let j = 0; j < i; j++) {
+    const a = labels[i], b = labels[j];
+    if (a.vis && b.vis && a.el.textContent === b.el.textContent && Math.hypot(a.x - b.x, a.y - b.y) < 10) a.vis = false;
+  }
+  // niente etichette accavallate: si sposta in su o in giù, altrimenti si nasconde
+  const placed = [];
+  const order = [...labels].sort((a, b) => (b.prio || 0) - (a.prio || 0));
+  for (const lb of order) {
+    if (!lb.vis) continue;
+    const w = lb.el.offsetWidth || 40, h = lb.el.offsetHeight || 14;
+    let ok = false;
+    for (const sh of [0, h + 2, -(h + 2), 2 * (h + 2), -2 * (h + 2)]) {
+      const box = [lb.x - w / 2 - 2, lb.y + sh - h / 2 - 1, lb.x + w / 2 + 2, lb.y + sh + h / 2 + 1];
+      if (!placed.some(q => box[0] < q[2] && box[2] > q[0] && box[1] < q[3] && box[3] > q[1])) { placed.push(box); lb.y += sh; ok = true; break; }
+    }
+    lb.vis = ok;
+  }
+  for (const lb of labels) {
+    lb.el.style.display = lb.vis ? '' : 'none';
+    if (lb.vis) lb.el.style.transform = `translate(${lb.x}px, ${lb.y}px) translate(-50%, -50%)`;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Gizmo degli assi
+   ------------------------------------------------------------------ */
+const gz = $('gizmo'), gctx = gz.getContext('2d');
+function drawGizmo() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), W = gz.clientWidth, H = gz.clientHeight;
+  if (gz.width !== Math.round(W * dpr)) { gz.width = Math.round(W * dpr); gz.height = Math.round(H * dpr); }
+  gctx.setTransform(dpr, 0, 0, dpr, 0, 0); gctx.clearRect(0, 0, W, H);
+  const qinv = camera.quaternion.clone().invert();
+  const axes = [['x', [1, 0, 0, 0]], ['y', [0, 1, 0, 0]], ['z', [0, 0, 1, 0]]];
+  if (st.view === 'chiusura') axes.push(['w', [0, 0, 0, 1]]);
+  const items = axes.map(([name, e]) => {
+    // direzione dell'asse dopo la rotazione, senza prospettiva
+    const s = st.chiusura, o = new Float64Array(4);
+    let [x, y, z, w] = e, qq;
+    if (st.view === 'chiusura') {
+      qq = Math.cos(rad(s.rxw)) * x + Math.sin(rad(s.rxw)) * w; w = -Math.sin(rad(s.rxw)) * x + Math.cos(rad(s.rxw)) * w; x = qq;
+      qq = Math.cos(rad(s.ryw)) * y + Math.sin(rad(s.ryw)) * w; w = -Math.sin(rad(s.ryw)) * y + Math.cos(rad(s.ryw)) * w; y = qq;
+      qq = Math.cos(rad(s.rzw)) * z + Math.sin(rad(s.rzw)) * w; w = -Math.sin(rad(s.rzw)) * z + Math.cos(rad(s.rzw)) * w; z = qq;
+    }
+    return { name, v: new THREE.Vector3(x, z, y).applyQuaternion(qinv) };
+  }).sort((a, b) => a.v.z - b.v.z);
+  const cx = W / 2, cy = H / 2, L = W * 0.34, ink = css('--muted'), acc = css('--accent');
+  gctx.font = '600 12px "Source Sans 3", system-ui, sans-serif'; gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
+  for (const { name, v } of items) {
+    const len = Math.hypot(v.x, v.y), ex = cx + v.x * L, ey = cy - v.y * L;
+    gctx.strokeStyle = gctx.fillStyle = name === 'w' ? acc : ink;
+    gctx.globalAlpha = 0.35 + 0.65 * Math.min(1, len); gctx.lineWidth = name === 'w' ? 2 : 1.5;
+    gctx.beginPath(); gctx.moveTo(cx, cy); gctx.lineTo(ex, ey); gctx.stroke();
+    gctx.beginPath(); gctx.arc(ex, ey, 2.2, 0, 2 * Math.PI); gctx.fill();
+    const k = len > 0.08 ? (L + 11) / (L * len) : 0;
+    gctx.fillText(name, len > 0.08 ? cx + v.x * L * k : cx + 9, len > 0.08 ? cy - v.y * L * k : cy - 9);
+  }
+  gctx.globalAlpha = 1;
+}
+
+/* ------------------------------------------------------------------
+   Vista 2: profilo radiale e testo che segue la sezione
+   ------------------------------------------------------------------ */
+const ruler = $('ruler');
+function drawRuler() {
+  const S = st.sezioni, X = r => 12 + r / R.out * 300, y = 24, hh = 12;
+  const seg = (a, b, fill) => `<rect x="${X(a)}" y="${y - hh / 2}" width="${X(b) - X(a)}" height="${hh}" fill="${fill}"/>`;
+  const tick = (r, color, dash) => `<line x1="${X(r)}" y1="${y - 9}" x2="${X(r)}" y2="${y + 9}" stroke="${color}" stroke-width="${dash === 'dot' ? 1.5 : 3}" ${dash === 'dash' ? 'stroke-dasharray="3 2"' : dash === 'dot' ? 'stroke-dasharray="1.5 1.5"' : ''}/>`;
+  const hx = X(Math.min(Math.abs(S.h), R.out * 1.04));
+  ruler.innerHTML =
+    seg(0, R.in, css('--world')) + seg(R.in, R.si, css('--c-es')) + seg(R.si, R.ip, css('--c-inc')) + seg(R.ip, R.out, css('--c-pre')) + seg(R.out, R.out * 1.04, css('--world')) +
+    `<rect x="${X(0)}" y="${y - hh / 2}" width="${X(R.out * 1.04) - X(0)}" height="${hh}" fill="none" stroke="${css('--line')}"/>` +
+    tick(R.in, css('--c-pc')) + tick(R.si, css('--c-si'), 'dash') + tick(R.ip, css('--c-ip'), 'dot') + tick(R.out, css('--c-pc')) +
+    `<rect x="${X(0)}" y="${y - hh / 2 - 1}" width="${Math.max(0, hx - X(0))}" height="${hh + 2}" fill="${css('--panel')}" opacity="0.72"/>` +
+    `<line x1="${hx}" y1="${y - 4}" x2="${hx}" y2="${y + 11}" stroke="${css('--ink')}" stroke-width="1.5"/>` +
+    `<text x="${X(0)}" y="45" font-size="11" fill="${css('--muted')}" font-family="Source Sans 3, system-ui, sans-serif">centro</text>` +
+    `<text x="${X(R.out)}" y="45" font-size="11" fill="${css('--muted')}" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif">faccia attiva = 1</text>` +
+    `<text x="${Math.max(X(0) + 8, Math.min(hx, X(R.out * 1.04) - 8))}" y="4" dominant-baseline="hanging" font-size="11" font-style="italic" fill="${css('--ink')}" text-anchor="middle" font-family="Source Serif 4, Georgia, serif">|h|</text>`;
+}
+function updateLive() {
+  const a = Math.abs(st.sezioni.h);
+  let t;
+  if (a < R.in) t = 'La sezione incontra le due facce della membrana. Dal centro verso l’esterno: mondo esterno, faccia ricettiva, Es, Super-io, Io inconscio, Io preconscio, faccia attiva.';
+  else if (a < R.si) t = 'La sezione non incontra più la faccia ricettiva: al centro c’è l’Es.';
+  else if (a < R.ip) t = 'La sezione non incontra più l’Es né il Super-io: al centro c’è l’Io inconscio.';
+  else if (a < R.out) t = 'Restano l’Io preconscio, al centro, e la faccia attiva.';
+  else t = 'La sezione passa fuori dell’apparato e incontra soltanto il mondo esterno.';
+  $('live').textContent = t;
+  drawRuler();
+}
+
+/* ------------------------------------------------------------------
+   Testi delle due viste
+   ------------------------------------------------------------------ */
+const TEXT = {
+  chiusura: {
+    caption: 'Il sistema percezione-coscienza confina con l’Es dalla faccia ricettiva e con l’Io preconscio dalla faccia attiva. Poiché ogni sistema tocca soltanto quello che lo precede e quello che lo segue, e soltanto la membrana tocca il mondo, nella Figura 30 le due facce sono due superfici separate, e la loro unità è un’identità. Il cursore della chiusura esegue l’identificazione: il guscio si curva finché le due facce coincidono, e la serie dei sistemi, che lo schema del 1900 svolge in linea, si richiude in un cerchio.',
+    note: 'La pagina lavora una dimensione sotto il libro. Nel libro l’apparato è il guscio di R⁴ fra due 3-sfere, e chiuso su sé stesso è S³ × S¹, che in R⁴ non può stare. Qui si chiude la sua sezione equatoriale, il guscio di R³ fra due sfere la cui sezione piana è la Figura 30: per richiudersi le occorre una direzione in più, w, e chiusa è S² × S¹. La direzione w non è la quarta coordinata del libro, è quella in cui il disegno esegue l’identificazione. Di Freud sono l’unità del sistema e la successione; le sfere e la corrispondenza lungo il raggio sono scelte del modello (§10.7.4).',
+  },
+  sezioni: {
+    caption: 'Prima dell’identificazione l’apparato è il guscio di R⁴ compreso fra due 3-sfere concentriche: dentro la faccia ricettiva, fuori la faccia attiva, e fra l’una e l’altra l’Es, l’Io inconscio e l’Io preconscio. Un iperpiano x₄ = h ne taglia una sezione a tre dimensioni, e il cursore lo fa scorrere lungo la quarta coordinata.',
+    note: 'Ogni 3-sfera di raggio r maggiore di |h| dà nella sezione una sfera di raggio √(r² − h²); quelle di raggio minore la sezione non le incontra. Il taglio serve soltanto a mostrare l’interno: sulla sua parete orizzontale, per h = 0, si legge la Figura 30. Le sfere sono scelte del modello (§10.7.4).',
+  },
+};
+
+/* ------------------------------------------------------------------
+   Comandi
+   ------------------------------------------------------------------ */
+const binders = {};
+function bindRange(id, view, key, fmt, rebuild = false) {
+  const el = $(id), out = $(id + '-out');
+  const set = v => { el.value = v; out.textContent = fmt(v); };
+  el.addEventListener('input', () => { st[view][key] = parseFloat(el.value); out.textContent = fmt(st[view][key]); dirty = true; });
+  binders[id] = set;
+  return set;
+}
+const pct = v => `${Math.round(v * 100)}%`, deg = v => `${Math.round(v)}°`;
+bindRange('t', 'chiusura', 't', pct);
+bindRange('rzw', 'chiusura', 'rzw', deg); bindRange('rxw', 'chiusura', 'rxw', deg); bindRange('ryw', 'chiusura', 'ryw', deg);
+bindRange('d', 'chiusura', 'd', v => num(v, 1));
+bindRange('h', 'sezioni', 'h', v => num(v, 2));
+bindRange('wedge', 'sezioni', 'wedge', deg);
+// la posizione h si mostra in unità della faccia attiva
+$('h').addEventListener('input', () => { st.sezioni.h = parseFloat($('h').value) * R.out; dirty = true; });
+binders.h = v => { $('h').value = v / R.out; $('h-out').textContent = num(v / R.out, 2); };
+const checks = { ortho: ['chiusura', 'ortho'], shadeW: ['chiusura', 'shadeW'], guscio: ['chiusura', 'guscio'], serie: ['chiusura', 'serie'], labels1: ['chiusura', 'labels'], labels2: ['sezioni', 'labels'] };
+for (const [id, [view, key]] of Object.entries(checks)) {
+  $(id).addEventListener('change', e => { st[view][key] = e.target.checked; $('d').disabled = st.chiusura.ortho; dirty = true; });
+}
+$('anim1').addEventListener('change', e => { st.chiusura.anim = e.target.value; });
+
+function setPlaying(on) {
+  st.playing = on;
+  for (const id of ['play1', 'play2']) { $(id).textContent = on ? 'Ferma' : 'Avvia'; $(id).setAttribute('aria-pressed', String(on)); }
+}
+$('play1').addEventListener('click', () => setPlaying(!st.playing));
+$('play2').addEventListener('click', () => setPlaying(!st.playing));
+
+function syncControls() {
+  const a = st.chiusura, b = st.sezioni;
+  binders.t(a.t); binders.rzw(a.rzw); binders.rxw(a.rxw); binders.ryw(a.ryw); binders.d(a.d);
+  $('ortho').checked = a.ortho; $('shadeW').checked = a.shadeW; $('guscio').checked = a.guscio; $('serie').checked = a.serie; $('labels1').checked = a.labels;
+  $('anim1').value = a.anim; $('d').disabled = a.ortho;
+  binders.h(b.h); binders.wedge(b.wedge); $('labels2').checked = b.labels;
+}
+
+function setCamera(view) {
+  const c = CAM[view];
+  camera.position.set(...c.pos); controls.target.set(...c.target); controls.update();
+}
+
+function setView(view, keepCamera = false) {
+  st.view = view;
+  for (const v of ['chiusura', 'sezioni']) {
+    const on = v === view;
+    $('tab-' + v).setAttribute('aria-selected', String(on));
+    $('ctl-' + v).hidden = !on;
+    $('ctl-' + v).style.display = on ? 'flex' : 'none';
+  }
+  $('leg-serie').hidden = view !== 'chiusura';
+  $('caption').textContent = TEXT[view].caption;
+  $('note').textContent = TEXT[view].note;
+  setPlaying(false);
+  clearScene();
+  if (view === 'chiusura') buildChiusura(); else buildSezioni();
+  if (!keepCamera) setCamera(view);
+  dirty = true;
+}
+$('tab-chiusura').addEventListener('click', () => setView('chiusura'));
+$('tab-sezioni').addEventListener('click', () => setView('sezioni'));
+$('reset').addEventListener('click', () => {
+  st[st.view] = { ...DEF[st.view] };
+  syncControls();
+  setView(st.view);
+});
+
+function applyTheme() {
+  scene.background = new THREE.Color(css('--world'));
+  for (const pc of pieces) applyMaterialColor(pc.mat);
+  if (st.view === 'sezioni') drawRuler();
+}
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+/* ------------------------------------------------------------------
+   Ciclo
+   ------------------------------------------------------------------ */
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / Math.max(h, 1);
+  // sugli schermi stretti si allarga il campo verticale, perché l'oggetto entri per intero in larghezza
+  camera.fov = camera.aspect < 1.25 ? 2 * Math.atan(Math.tan(rad(15)) * 1.25 / camera.aspect) * 180 / Math.PI : 30;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (st.playing) {
+    if (st.view === 'chiusura') {
+      const a = st.chiusura, k = a.anim;
+      if (k === 't') {
+        a.t += st.dir * 0.14 * dt;
+        if (a.t >= 1) { a.t = 1; st.dir = -1; } else if (a.t <= 0) { a.t = 0; st.dir = 1; }
+        binders.t(a.t);
+      } else {
+        let v = a[k] + 24 * dt; if (v > 180) v -= 360; a[k] = v; binders[k](v);
+      }
+    } else {
+      const b = st.sezioni, lim = 1.02 * R.out;
+      b.h += st.dir * 0.32 * dt;
+      if (b.h >= lim) { b.h = lim; st.dir = -1; } else if (b.h <= -lim) { b.h = -lim; st.dir = 1; }
+      binders.h(b.h);
+    }
+    dirty = true;
+  }
+  if (dirty) { update(); dirty = false; }
+  controls.update();
+  camAz = Math.atan2(camera.position.z - controls.target.z, camera.position.x - controls.target.x);
+  if (labels.length) { const P = projector(); for (const lb of labels) lb.update(P); }
+  renderer.render(scene, camera);
+  placeLabels();
+  drawGizmo();
+  requestAnimationFrame(frame);
+}
+
+applyTheme();
+syncControls();
+setView('chiusura');
+resize();
+requestAnimationFrame(frame);
+
+// per i fotogrammi da stampa
+window.PC4D = {
+  st, camera, controls,
+  view: v => { setView(v); syncControls(); },
+  set(view, o) { Object.assign(st[view], o); syncControls(); dirty = true; },
+  cam(pos, target) { camera.position.set(...pos); if (target) controls.target.set(...target); controls.update(); },
+};
+</script>
+</body>
+</html>
